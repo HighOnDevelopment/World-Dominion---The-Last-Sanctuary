@@ -1,0 +1,17 @@
+# Keep line endings consistent across Windows and Mac (stops the LF/CRLF warnings)
+* text=auto eol=lf
+
+# Binary files: never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ktx2 binary
+*.glb binary
+*.gltf text eol=lf
+*.bin binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.blend binary
+*.docx binary
