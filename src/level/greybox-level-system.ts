@@ -44,6 +44,7 @@ const COLORS = {
   sanctuary: 0xffcc80,
   archiveRuined: 0x8d6e63,
   relayBroken: 0x616161,
+  relayRestored: 0x4dd0e1,
   camp: 0xa1887f,
   energyCore: 0x00e5ff,
   invader: 0x8e24aa,
@@ -95,7 +96,29 @@ function placed(object: Object3D, at: Vec2, lift = 0): Object3D {
 
 export class GreyboxLevelSystem extends createSystem({}) {
   init(): void {
-    this.cleanupFuncs.push(events.on('boardPlaced', () => this.build()));
+    this.cleanupFuncs.push(
+      events.on('boardPlaced', () => this.build()),
+      events.on('relayRestored', ({ relayId }) => this.showRelayRestored(relayId)),
+    );
+  }
+
+  /** Light up a restored relay and any route it opens. */
+  private showRelayRestored(relayId: 'mainRelay' | 'eastRelay'): void {
+    const tower = level.places.get(relayId)?.object3D;
+    if (tower instanceof Mesh && tower.material instanceof MeshStandardMaterial) {
+      tower.material.color.setHex(COLORS.relayRestored);
+      tower.material.emissive.setHex(COLORS.relayRestored);
+      tower.material.emissiveIntensity = 0.6;
+    }
+    for (const edge of EDGES) {
+      if (edge.requiresRelay !== relayId) continue;
+      const segment = level.paths.get(`${edge.from}-${edge.to}`)?.object3D;
+      if (segment instanceof Mesh && segment.material instanceof MeshStandardMaterial) {
+        segment.material.opacity = 1;
+        segment.material.transparent = false;
+        segment.material.needsUpdate = true;
+      }
+    }
   }
 
   private add(object: Object3D, parent: Entity | null = board.root): Entity {

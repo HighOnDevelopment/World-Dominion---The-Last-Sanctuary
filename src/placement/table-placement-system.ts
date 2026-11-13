@@ -7,6 +7,10 @@
  * If no table is found within a few seconds, it falls back to placing the
  * anchor in front of the player at a comfortable seated height.
  *
+ * During development (npm run dev), outside XR the board is shown in front
+ * of the browser camera so systems can be tested with the mouse; entering XR
+ * then moves it onto the real table.
+ *
  * Later tasks build on this: T19 puts the greybox board on the anchor,
  * T20/T21 add moving and scaling, T35 hardens it for untested rooms.
  */
@@ -34,6 +38,8 @@ import {
 const SETTLE_SECONDS = 1.5;
 /** Give up looking for a table after this long and use the fallback. */
 const FALLBACK_AFTER_SECONDS = 4;
+/** Desktop (non-XR) debug position, in front of the default browser camera. */
+const DESKTOP_POSITION = new Vector3(0, 0.9, -0.55);
 /** Keep this much table visible around the board. */
 const TABLE_MARGIN_M = 0.03;
 
@@ -41,6 +47,7 @@ export class TablePlacementSystem extends createSystem({
   meshes: { required: [XRMesh] },
   planes: { required: [XRPlane] },
 }) {
+  /** True once the board has been placed during the current XR session. */
   private placed = false;
   private searchStartTime = -1;
   private readonly head = new Vector3();
@@ -48,11 +55,14 @@ export class TablePlacementSystem extends createSystem({
   private readonly headRotation = new Quaternion();
 
   update(_delta: number, time: number): void {
-    if (this.placed) return;
     if (!this.world.xrSession) {
+      // Left XR (or never entered): look for a table again next time.
+      this.placed = false;
       this.searchStartTime = -1;
+      if (import.meta.env.DEV && !board.anchor && time > 1) this.placeForDesktop();
       return;
     }
+    if (this.placed) return;
     if (this.searchStartTime < 0) this.searchStartTime = time;
     const elapsed = time - this.searchStartTime;
     if (elapsed < SETTLE_SECONDS) return;
@@ -138,27 +148,41 @@ export class TablePlacementSystem extends createSystem({
     console.warn('[placement] No table found; board placed in front of the player.');
   }
 
+  /** Development only: show the board in front of the browser camera. */
+  private placeForDesktop(): void {
+    this.createBoardAnchor(DESKTOP_POSITION, 1, 'desktop', DESKTOP_POSITION.y, 0);
+    console.info('[placement] Desktop debug board placed (enter XR to move it onto a table).');
+  }
+
+  /**
+   * Put the board anchor at `center`, facing the player. Creates the anchor
+   * the first time; later calls move the existing one (the level stays built).
+   */
   private createBoardAnchor(
     center: Vector3,
     scale: number,
     source: BoardPlacementSource,
     tableHeightM: number,
+    yaw = Math.atan2(this.head.x - center.x, this.head.z - center.z),
   ): void {
-    const anchor = new Group();
-    anchor.name = 'board-anchor';
+    if (!board.anchor) {
+      const anchor = new Group();
+      anchor.name = 'board-anchor';
+      board.anchor = this.world.createTransformEntity(anchor);
+
+      // Game objects sit on the board's top surface.
+      const root = new Group();
+      root.name = 'board-root';
+      root.position.y = BOARD.thickness;
+      board.root = this.world.createTransformEntity(root, { parent: board.anchor });
+    }
+    const anchor = board.anchor.object3D!;
     anchor.position.copy(center);
     // Turn the anchor so its +Z axis points at the player.
-    anchor.rotation.y = Math.atan2(this.head.x - center.x, this.head.z - center.z);
+    anchor.rotation.set(0, yaw, 0);
     anchor.scale.setScalar(scale);
-    board.anchor = this.world.createTransformEntity(anchor);
 
-    // Game objects sit on the board's top surface.
-    const root = new Group();
-    root.name = 'board-root';
-    root.position.y = BOARD.thickness;
-    board.root = this.world.createTransformEntity(root, { parent: board.anchor });
-
-    this.placed = true;
+    if (source !== 'desktop') this.placed = true;
     events.emit('boardPlaced', { source, tableHeightM });
   }
 }

@@ -15,14 +15,24 @@
 
 export type ResourceKind = 'survivors' | 'energy' | 'materials';
 export type MissionState = 'intro' | 'playing' | 'won' | 'lost';
-export type BoardPlacementSource = 'table-mesh' | 'table-plane' | 'fallback';
+export type BoardPlacementSource = 'table-mesh' | 'table-plane' | 'fallback' | 'desktop';
+export type RouteChoice = 'short' | 'long';
+export type RelayId = 'mainRelay' | 'eastRelay';
 
 /** Every event in the game and the data it carries. Add new ones here. */
 export interface GameEvents {
   /** P1: player pinched a unit or squad (null = selection cleared). */
   unitSelected: { unitId: string | null };
-  /** P1: player chose where the selected unit should go (board-local x, z). */
-  destinationChosen: { unitId: string; x: number; z: number };
+  /**
+   * P1: player chose where the selected unit should go (board-local x, z).
+   * unitId 'squad' moves the restorer and both sentinels together.
+   * route forces the short or long route; omit it for the shortest open path.
+   */
+  destinationChosen: { unitId: string; x: number; z: number; route?: RouteChoice };
+  /** P1: a unit reached the end of its path (board-local x, z). */
+  unitArrived: { unitId: string; x: number; z: number };
+  /** P3: a relay was restored (main relay = core plugged in; east relay = paid for). */
+  relayRestored: { relayId: RelayId };
   /** P3: an energy core was snapped into a relay socket. */
   socketFilled: { socketId: string };
   /** P1: a resource changed. `value` is the new total. */
