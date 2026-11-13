@@ -94,18 +94,18 @@ await wait(4); // the table search waits ~1.5 s after entering XR
 iwsdk('switch to hand tracking', ['xr', 'set-input-mode'], { mode: 'hand' });
 await wait(1);
 const targets = iwsdk('list grabbable targets', ['xr', 'list-targets']);
-if (!targets.text.includes('hello-cube')) {
-  console.log('\nThe hello-cube was not found in the scene. Check the browser console.');
+if (!targets.text.includes('energy-core')) {
+  console.log('\nThe energy-core was not found in the scene. Check the browser console.');
   saveScreenshot('no-cube');
   finish();
   process.exit(1);
 }
 saveScreenshot('1-before-grab');
 
-iwsdk('reach, pinch the cube and lift it', ['xr', 'run-sequence'], {
+iwsdk('reach, pinch the energy core and lift it', ['xr', 'run-sequence'], {
   device: 'hand-right',
   steps: [
-    { label: 'grab cube', target: 'hello-cube', approach: { distance: 0.06 }, pinch: { value: 1, at: 'arrival' } },
+    { label: 'grab energy core', target: 'energy-core', approach: { distance: 0.06 }, pinch: { value: 1, at: 'arrival' } },
     { label: 'lift in front of face', position: { relativeTo: 'head', x: 0.08, y: -0.2, z: -0.35 } },
     { label: 'hold', duration: 1 },
   ],

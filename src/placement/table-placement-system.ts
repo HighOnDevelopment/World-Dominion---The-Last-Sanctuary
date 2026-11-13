@@ -3,9 +3,7 @@
  *
  * When the player enters XR, this system looks at what scene understanding
  * found in the room, picks the best table, and puts the board anchor on it.
- * For now the anchor carries:
- *   - a translucent outline showing where the board will go (0.6 m x 0.4 m)
- *   - a small grabbable cube ("hello hands")
+ * The board itself is built on the anchor by the level system (T19).
  * If no table is found within a few seconds, it falls back to placing the
  * anchor in front of the player at a comfortable seated height.
  *
@@ -13,21 +11,16 @@
  * T20/T21 add moving and scaling, T35 hardens it for untested rooms.
  */
 import {
-  BoxGeometry,
   createSystem,
-  Entity,
   Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  OneHandGrabbable,
-  PlaneGeometry,
   Quaternion,
   Vector3,
   XRMesh,
   XRPlane,
 } from '@iwsdk/core';
 import { events, type BoardPlacementSource } from '../events.js';
+import { BOARD } from '../data/mission.js';
+import { board } from './board-state.js';
 import {
   candidateFromMesh,
   tableScore,
@@ -41,11 +34,8 @@ import {
 const SETTLE_SECONDS = 1.5;
 /** Give up looking for a table after this long and use the fallback. */
 const FALLBACK_AFTER_SECONDS = 4;
-/** Board footprint in metres (width across, depth towards the player). */
-const BOARD_WIDTH_M = 0.6;
-const BOARD_DEPTH_M = 0.4;
 /** Keep this much table visible around the board. */
-const TABLE_MARGIN_M = 0.05;
+const TABLE_MARGIN_M = 0.03;
 
 export class TablePlacementSystem extends createSystem({
   meshes: { required: [XRMesh] },
@@ -53,7 +43,6 @@ export class TablePlacementSystem extends createSystem({
 }) {
   private placed = false;
   private searchStartTime = -1;
-  private boardAnchor: Entity | null = null;
   private readonly head = new Vector3();
   private readonly forward = new Vector3();
   private readonly headRotation = new Quaternion();
@@ -127,9 +116,13 @@ export class TablePlacementSystem extends createSystem({
   }
 
   private placeOnTable(table: TableCandidate): void {
-    const width = Math.min(BOARD_WIDTH_M, table.sizeX - TABLE_MARGIN_M * 2);
-    const depth = Math.min(BOARD_DEPTH_M, table.sizeZ - TABLE_MARGIN_M * 2);
-    this.createBoardAnchor(table.center, width, depth, table.source, table.topY);
+    // Shrink the board (never grow it) if the table is smaller than the board.
+    const fit = Math.min(
+      1,
+      (table.sizeX - TABLE_MARGIN_M * 2) / BOARD.width,
+      (table.sizeZ - TABLE_MARGIN_M * 2) / BOARD.depth,
+    );
+    this.createBoardAnchor(table.center, Math.max(fit, 0.5), table.source, table.topY);
     console.info(
       `[placement] Board placed on ${table.source} at height ${table.topY.toFixed(2)} m ` +
         `(table ${table.sizeX.toFixed(2)} x ${table.sizeZ.toFixed(2)} m, ` +
@@ -141,14 +134,13 @@ export class TablePlacementSystem extends createSystem({
     // 0.6 m in front of the player's face, at seated-table height.
     const center = this.head.clone().addScaledVector(this.forward, 0.6);
     center.y = Math.max(0.5, this.head.y - 0.55);
-    this.createBoardAnchor(center, BOARD_WIDTH_M, BOARD_DEPTH_M, 'fallback', center.y);
+    this.createBoardAnchor(center, 1, 'fallback', center.y);
     console.warn('[placement] No table found; board placed in front of the player.');
   }
 
   private createBoardAnchor(
     center: Vector3,
-    width: number,
-    depth: number,
+    scale: number,
     source: BoardPlacementSource,
     tableHeightM: number,
   ): void {
@@ -157,31 +149,14 @@ export class TablePlacementSystem extends createSystem({
     anchor.position.copy(center);
     // Turn the anchor so its +Z axis points at the player.
     anchor.rotation.y = Math.atan2(this.head.x - center.x, this.head.z - center.z);
+    anchor.scale.setScalar(scale);
+    board.anchor = this.world.createTransformEntity(anchor);
 
-    // Translucent outline of where the board will sit.
-    const outline = new Mesh(
-      new PlaneGeometry(width, depth),
-      new MeshBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.25 }),
-    );
-    outline.name = 'board-outline';
-    outline.rotation.x = -Math.PI / 2;
-    outline.position.y = 0.002;
-    anchor.add(outline);
-
-    this.boardAnchor = this.world.createTransformEntity(anchor);
-
-    // "Hello hands" cube: reach out, pinch it (or squeeze a controller) and move it.
-    const cube = new Mesh(
-      new BoxGeometry(0.08, 0.08, 0.08),
-      new MeshStandardMaterial({ color: 0xffb74d, roughness: 0.5 }),
-    );
-    cube.name = 'hello-cube';
-    cube.castShadow = true;
-    cube.position.set(0, 0.04, 0);
-    const cubeEntity = this.world.createTransformEntity(cube, {
-      parent: this.boardAnchor,
-    });
-    cubeEntity.addComponent(OneHandGrabbable);
+    // Game objects sit on the board's top surface.
+    const root = new Group();
+    root.name = 'board-root';
+    root.position.y = BOARD.thickness;
+    board.root = this.world.createTransformEntity(root, { parent: board.anchor });
 
     this.placed = true;
     events.emit('boardPlaced', { source, tableHeightM });
