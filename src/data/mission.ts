@@ -81,11 +81,14 @@ export interface UnitSpawn {
 }
 
 export const UNIT_STATS = {
-  keeper: { speed: 0, health: 1, attackRange: 0, attackDamage: 0 },
-  restorer: { speed: 0.03, health: 3, attackRange: 0, attackDamage: 0 },
-  sentinel: { speed: 0.03, health: 5, attackRange: 0.05, attackDamage: 1 },
-  civilian: { speed: 0.025, health: 2, attackRange: 0, attackDamage: 0 },
-} as const satisfies Record<UnitRole, { speed: number; health: number; attackRange: number; attackDamage: number }>;
+  keeper: { speed: 0, health: 1, attackRange: 0, attackDamage: 0, attackIntervalS: 0 },
+  restorer: { speed: 0.03, health: 3, attackRange: 0, attackDamage: 0, attackIntervalS: 0 },
+  sentinel: { speed: 0.03, health: 5, attackRange: 0.05, attackDamage: 1, attackIntervalS: 1 },
+  civilian: { speed: 0.025, health: 2, attackRange: 0, attackDamage: 0, attackIntervalS: 0 },
+} as const satisfies Record<
+  UnitRole,
+  { speed: number; health: number; attackRange: number; attackDamage: number; attackIntervalS: number }
+>;
 
 export const SQUAD: readonly UnitSpawn[] = [
   { id: 'keeper', role: 'keeper', at: [-0.04, 0.16] },
@@ -104,7 +107,7 @@ export const SURVIVORS: readonly UnitSpawn[] = [
 export const INVADER_STATS = {
   patrolSpeed: 0.02,
   chaseSpeed: 0.035,
-  detectRadius: 0.06,
+  detectRadius: 0.05,
   /** Give up the chase this far from the patrol path. */
   leashRadius: 0.12,
   attackRange: 0.03,
@@ -120,10 +123,37 @@ export interface InvaderSpawn {
 }
 
 /** Both invaders guard the SHORT route. The long route is safe. */
+// Both invaders guard a checkpoint in the middle of the short route. Their
+// loops stay more than detectRadius + 5 mm from the squad's home spots, its
+// arrival spots at the relay and the long route (checked by a search over
+// the board), so the squad is only attacked if it takes the short route.
 export const INVADERS: readonly InvaderSpawn[] = [
-  { id: 'invader-1', patrol: [[-0.02, 0.04], [-0.09, 0.03], [-0.07, -0.03]] },
-  { id: 'invader-2', patrol: [[-0.1, -0.02], [-0.03, -0.06], [-0.06, 0.01]] },
+  { id: 'invader-1', patrol: [[-0.07, 0.047], [-0.084, 0.027], [-0.056, 0.027]] },
+  { id: 'invader-2', patrol: [[-0.045, 0.032], [-0.059, 0.012], [-0.031, 0.012]] },
 ];
+
+/**
+ * Squad formation relative to the direction of travel, in metres:
+ * [right, forward]. Sentinels walk in front, the Restorer behind them.
+ */
+export const SQUAD_FORMATION: Readonly<Record<string, Vec2>> = {
+  restorer: [0, -0.02],
+  'sentinel-1': [-0.02, 0.01],
+  'sentinel-2': [0.02, 0.01],
+};
+
+/**
+ * Seconds each squad member waits before following a move order. The
+ * Restorer holds back so the Sentinels walk into danger first.
+ */
+export const SQUAD_START_DELAY_S: Readonly<Record<string, number>> = {
+  'sentinel-1': 0,
+  'sentinel-2': 0,
+  restorer: 1,
+};
+
+/** Where the squad stands when it is "home" (in front of the Sanctuary). */
+export const SQUAD_HOME: Vec2 = [0, 0.085];
 
 // ------------------------------------------------------------ resources ---
 export const RESOURCES = {

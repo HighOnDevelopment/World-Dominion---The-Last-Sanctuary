@@ -18,6 +18,7 @@ export type MissionState = 'intro' | 'playing' | 'won' | 'lost';
 export type BoardPlacementSource = 'table-mesh' | 'table-plane' | 'fallback' | 'desktop';
 export type RouteChoice = 'short' | 'long';
 export type RelayId = 'mainRelay' | 'eastRelay';
+export type Team = 'squad' | 'civilian' | 'invader';
 
 /** Every event in the game and the data it carries. Add new ones here. */
 export interface GameEvents {
@@ -33,6 +34,10 @@ export interface GameEvents {
   unitArrived: { unitId: string; x: number; z: number };
   /** P3: a relay was restored (main relay = core plugged in; east relay = paid for). */
   relayRestored: { relayId: RelayId };
+  /** P3: a unit or invader lost health. */
+  unitDamaged: { unitId: string; health: number; maxHealth: number; attackerId: string };
+  /** P3: a unit or invader was killed (it is hidden and stops moving). */
+  unitDied: { unitId: string; team: Team };
   /** P3: an energy core was snapped into a relay socket. */
   socketFilled: { socketId: string };
   /** P1: a resource changed. `value` is the new total. */

@@ -14,7 +14,7 @@
  * else needs to change when T13/T15 replace it.
  */
 import { createSystem, Plane, Raycaster, Vector2, Vector3 } from '@iwsdk/core';
-import { RESOURCES, WAYPOINTS } from '../data/mission.js';
+import { RESOURCES, SQUAD_HOME, WAYPOINTS } from '../data/mission.js';
 import { events } from '../events.js';
 import { resources } from '../game/resources/resources.js';
 import { level } from '../level/level-state.js';
@@ -48,7 +48,7 @@ export class DebugInputSystem extends createSystem({}) {
 
   private onKey(key: string): void {
     const [rx, rz] = WAYPOINTS.relay;
-    const [hx, hz] = WAYPOINTS.sanctuary;
+    const [hx, hz] = SQUAD_HOME;
     switch (key) {
       case '1':
         console.info('[debug] squad -> relay by the short route');

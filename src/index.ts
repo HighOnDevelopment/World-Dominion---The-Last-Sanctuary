@@ -7,6 +7,8 @@
 
 import { World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
+import { EnemyAISystem } from './game/ai/enemy-ai-system.js';
+import { CombatSystem } from './game/combat/combat-system.js';
 import { ResourceSystem } from './game/resources/resource-system.js';
 import { UnitMovementSystem } from './game/units/unit-movement-system.js';
 import { DebugInputSystem } from './input/debug-input-system.js';
@@ -21,6 +23,8 @@ World.create(
   world.registerSystem(GreyboxLevelSystem); // P2: build the board (T19)
   world.registerSystem(ResourceSystem); // P1: starting resources (T16)
   world.registerSystem(UnitMovementSystem); // P1: units walk the routes (T14)
+  world.registerSystem(CombatSystem); // P3: health, sentinels fight back (T24)
+  world.registerSystem(EnemyAISystem); // P3: invaders patrol/chase/attack (T23)
   world.registerSystem(DebugInputSystem); // P1: dev-only keys + mouse
   world.registerSystem(TablePlacementSystem); // P2: find the table (T09)
 });
