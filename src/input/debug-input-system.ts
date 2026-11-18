@@ -6,7 +6,9 @@
  *   1  send the squad to the main relay by the SHORT route
  *   2  send the squad to the main relay by the LONG route (closed until 3)
  *   3  spend Energy to restore the East Relay (opens the long route)
- *   0  send the squad home to the Sanctuary
+ *   0  send the squad home to the Sanctuary (by the route it came)
+ *   4  drop the energy core onto the main relay (as if pinched there)
+ *   r  restart the mission
  * Mouse (normal browser view only, not in XR):
  *   click a squad unit to select the squad, then click the board to move it.
  *
@@ -14,8 +16,16 @@
  * else needs to change when T13/T15 replace it.
  */
 import { createSystem, Plane, Raycaster, Vector2, Vector3 } from '@iwsdk/core';
-import { RESOURCES, SQUAD_HOME, WAYPOINTS } from '../data/mission.js';
-import { events } from '../events.js';
+import {
+  CORE_RADIUS,
+  LOCATIONS,
+  RELAY_HEIGHT,
+  RESOURCES,
+  SQUAD_HOME,
+  WAYPOINTS,
+} from '../data/mission.js';
+import { events, type RouteChoice } from '../events.js';
+import { setBoardLocal } from '../game/mission/board-space.js';
 import { resources } from '../game/resources/resources.js';
 import { level } from '../level/level-state.js';
 import { board } from '../placement/board-state.js';
@@ -26,6 +36,7 @@ const PICK_RADIUS = 0.03;
 
 export class DebugInputSystem extends createSystem({}) {
   private selected: string | null = null;
+  private lastRoute: RouteChoice | undefined;
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly plane = new Plane();
@@ -43,7 +54,9 @@ export class DebugInputSystem extends createSystem({}) {
       () => window.removeEventListener('keydown', onKey),
       () => canvas.removeEventListener('pointerdown', onPointer),
     );
-    console.info('[debug] Keys: 1 short route, 2 long route, 3 restore East Relay, 0 go home.');
+    console.info(
+      '[debug] Keys: 1 short route, 2 long route, 3 restore East Relay, 0 go home, 4 core on relay, R restart.',
+    );
   }
 
   private onKey(key: string): void {
@@ -51,10 +64,12 @@ export class DebugInputSystem extends createSystem({}) {
     const [hx, hz] = SQUAD_HOME;
     switch (key) {
       case '1':
+        this.lastRoute = 'short';
         console.info('[debug] squad -> relay by the short route');
         events.emit('destinationChosen', { unitId: 'squad', x: rx, z: rz, route: 'short' });
         break;
       case '2':
+        this.lastRoute = 'long';
         console.info('[debug] squad -> relay by the long route');
         events.emit('destinationChosen', { unitId: 'squad', x: rx, z: rz, route: 'long' });
         break;
@@ -67,8 +82,23 @@ export class DebugInputSystem extends createSystem({}) {
         }
         break;
       case '0':
-        console.info('[debug] squad -> home');
-        events.emit('destinationChosen', { unitId: 'squad', x: hx, z: hz });
+        console.info(`[debug] squad -> home${this.lastRoute ? ` by the ${this.lastRoute} route` : ''}`);
+        events.emit('destinationChosen', { unitId: 'squad', x: hx, z: hz, route: this.lastRoute });
+        break;
+      case '4': {
+        const core = level.energyCore?.object3D;
+        if (!core) break;
+        const [sx, sz] = LOCATIONS.mainRelay;
+        console.info('[debug] energy core dropped onto the main relay');
+        setBoardLocal(core, sx, RELAY_HEIGHT + CORE_RADIUS + 0.01, sz);
+        break;
+      }
+      case 'r':
+      case 'R':
+        this.lastRoute = undefined;
+        this.selected = null;
+        console.info('[debug] restart mission');
+        events.emit('missionReset', {});
         break;
     }
   }

@@ -35,6 +35,12 @@ export class CombatSystem extends createSystem({}) {
   init(): void {
     this.cleanupFuncs.push(
       events.on('boardPlaced', () => this.start()),
+      events.on('missionReset', () => {
+        health.clear();
+        this.nextAttack.clear();
+        this.started = false;
+        this.start();
+      }),
       events.on('unitDamaged', ({ unitId, health: hp, maxHealth, attackerId }) => {
         console.info(`[combat] ${attackerId} hits ${unitId} (${hp}/${maxHealth})`);
         this.flash(unitId);

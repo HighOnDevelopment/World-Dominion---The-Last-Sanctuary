@@ -23,6 +23,8 @@ import {
 } from '@iwsdk/core';
 import {
   BOARD,
+  CORE_RADIUS,
+  CORE_START,
   EDGES,
   INVADERS,
   LOCATIONS,
@@ -99,7 +101,43 @@ export class GreyboxLevelSystem extends createSystem({}) {
     this.cleanupFuncs.push(
       events.on('boardPlaced', () => this.build()),
       events.on('relayRestored', ({ relayId }) => this.showRelayRestored(relayId)),
+      events.on('missionReset', () => this.resetLevel()),
     );
+  }
+
+  /** Put every unit and invader back at its start, visible, relays broken. */
+  private resetLevel(): void {
+    for (const unit of [...SQUAD, ...SURVIVORS]) {
+      const object = level.units.get(unit.id)?.object3D;
+      if (!object) continue;
+      object.position.x = unit.at[0];
+      object.position.z = unit.at[1];
+      object.rotation.y = 0;
+      object.visible = true;
+    }
+    for (const invader of INVADERS) {
+      const object = level.invaders.get(invader.id)?.object3D;
+      if (!object) continue;
+      object.position.x = invader.patrol[0][0];
+      object.position.z = invader.patrol[0][1];
+      object.visible = true;
+    }
+    for (const id of ['mainRelay', 'eastRelay'] as const) {
+      const tower = level.places.get(id)?.object3D;
+      if (tower instanceof Mesh && tower.material instanceof MeshStandardMaterial) {
+        tower.material.color.setHex(COLORS.relayBroken);
+        tower.material.emissive.setHex(0x000000);
+      }
+    }
+    for (const edge of EDGES) {
+      if (!edge.requiresRelay) continue;
+      const segment = level.paths.get(`${edge.from}-${edge.to}`)?.object3D;
+      if (segment instanceof Mesh && segment.material instanceof MeshStandardMaterial) {
+        segment.material.opacity = 0.3;
+        segment.material.transparent = true;
+        segment.material.needsUpdate = true;
+      }
+    }
   }
 
   /** Light up a restored relay and any route it opens. */
@@ -139,10 +177,10 @@ export class GreyboxLevelSystem extends createSystem({}) {
     this.buildUnits();
 
     // Energy core: the Restorer carries it to the relay (T25 makes it snap in).
-    const core = new Mesh(new SphereGeometry(0.012, 16, 12), material(COLORS.energyCore));
+    const core = new Mesh(new SphereGeometry(CORE_RADIUS, 16, 12), material(COLORS.energyCore));
     core.name = 'energy-core';
     core.castShadow = true;
-    placed(core, [0.06, 0.15], 0.012);
+    placed(core, CORE_START, CORE_RADIUS);
     level.energyCore = this.add(core);
     level.energyCore.addComponent(OneHandGrabbable);
 

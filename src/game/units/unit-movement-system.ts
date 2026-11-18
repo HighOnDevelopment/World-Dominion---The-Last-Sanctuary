@@ -68,6 +68,11 @@ export class UnitMovementSystem extends createSystem({}) {
       events.on('relayRestored', ({ relayId }) => {
         this.restoredRelays.add(relayId);
       }),
+      events.on('missionReset', () => {
+        this.walks.clear();
+        this.dead.clear();
+        this.restoredRelays.clear();
+      }),
       events.on('unitDied', ({ unitId }) => {
         this.dead.add(unitId);
         this.walks.delete(unitId);
@@ -82,6 +87,16 @@ export class UnitMovementSystem extends createSystem({}) {
         }
       }),
     );
+  }
+
+  /** Stop a unit where it is. */
+  stopUnit(unitId: string): void {
+    this.walks.delete(unitId);
+  }
+
+  /** True while a unit still has somewhere to walk. */
+  isWalking(unitId: string): boolean {
+    return this.walks.has(unitId);
   }
 
   /** Plan a route for one unit. Returns false if it cannot go there. */

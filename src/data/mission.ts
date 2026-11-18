@@ -179,6 +179,23 @@ export const MISSION = {
   minSurvivorsAlive: 2,
 } as const;
 
+/** Distances (metres, board-local) the mission rules use. */
+export const MISSION_RANGES = {
+  /** Restorer counts as "at the relay" within this distance of it. */
+  atRelay: 0.06,
+  /** A civilian counts as "home" within this distance of the Sanctuary waypoint. */
+  atHome: 0.06,
+  /** The energy core snaps in when released this close to the relay top. */
+  socketSnap: 0.04,
+  /** Civilians re-path towards the Restorer when further than this. */
+  escortFollow: 0.035,
+} as const;
+
+/** Where the energy core waits at the start, and the relay tower height. */
+export const CORE_START: Vec2 = [0.06, 0.15];
+export const CORE_RADIUS = 0.012;
+export const RELAY_HEIGHT = 0.08;
+
 /** Archive restoration stages unlocked by Materials (T34). */
 export const ARCHIVE_STAGES = [
   { percent: 0, materials: 0 },

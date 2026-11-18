@@ -42,8 +42,19 @@ export interface GameEvents {
   socketFilled: { socketId: string };
   /** P1: a resource changed. `value` is the new total. */
   resourceChanged: { resource: ResourceKind; value: number; delta: number };
-  /** P3: the mission moved to a new state. */
-  missionStateChanged: { state: MissionState };
+  /** P3: the mission moved to a new state (reason explains a win or loss). */
+  missionStateChanged: { state: MissionState; reason?: string };
+  /** P3: the player's current goal changed (the HUD shows this text). */
+  objectiveChanged: { step: number; text: string };
+  /** P3: seconds left on the mission timer (sent once per second). */
+  missionTimer: { remainingS: number };
+  /** P3: a civilian reached the Sanctuary. */
+  survivorRescued: { unitId: string; rescued: number };
+  /**
+   * P3: restart the mission without reloading. Every system puts its own
+   * state back to the start when it hears this.
+   */
+  missionReset: Record<string, never>;
   /** P2: the board was placed (or re-placed) in the room. */
   boardPlaced: { source: BoardPlacementSource; tableHeightM: number };
 }

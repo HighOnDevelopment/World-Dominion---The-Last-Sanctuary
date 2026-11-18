@@ -16,6 +16,7 @@ export class ResourceSystem extends createSystem({}) {
         this.started = true;
         resources.reset();
       }),
+      events.on('missionReset', () => resources.reset()),
       events.on('resourceChanged', ({ resource, value, delta }) => {
         console.info(`[resources] ${resource} ${delta >= 0 ? '+' : ''}${delta} -> ${value}`);
       }),

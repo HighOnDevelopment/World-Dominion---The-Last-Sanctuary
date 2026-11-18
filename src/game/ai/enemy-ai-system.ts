@@ -11,6 +11,7 @@
  */
 import { createSystem, Object3D } from '@iwsdk/core';
 import { INVADER_STATS, INVADERS, type InvaderSpawn, type Vec2 } from '../../data/mission.js';
+import { events } from '../../events.js';
 import { boardDistance, objectOf } from '../combat/combat-system.js';
 import { health } from '../combat/health.js';
 
@@ -52,6 +53,19 @@ export class EnemyAISystem extends createSystem({}) {
       { spawn, mode: 'patrol' as Mode, patrolIndex: 1 % spawn.patrol.length, target: null, nextAttack: 0 },
     ]),
   );
+
+  init(): void {
+    this.cleanupFuncs.push(
+      events.on('missionReset', () => {
+        for (const brain of this.brains.values()) {
+          brain.mode = 'patrol';
+          brain.patrolIndex = 1 % brain.spawn.patrol.length;
+          brain.target = null;
+          brain.nextAttack = 0;
+        }
+      }),
+    );
+  }
 
   private setMode(id: string, brain: Brain, mode: Mode, target: string | null = null): void {
     if (brain.mode === mode && brain.target === target) return;
